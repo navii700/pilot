@@ -7,18 +7,64 @@ import type {
   ProductCollectionSortKeys,
   ProductFilter,
 } from '@shopify/hydrogen/storefront-api-types';
-import { json, type LoaderFunctionArgs } from '@shopify/remix-oxygen';
+import {json, type LoaderFunctionArgs} from '@shopify/remix-oxygen';
 import invariant from 'tiny-invariant';
-import type { SortParam } from '~/components/SortFilter';
-import { FILTER_URL_PREFIX } from '~/components/SortFilter';
-import { routeHeaders } from '~/data/cache';
-import { COLLECTION_QUERY } from '~/data/queries';
-import { PAGINATION_SIZE } from '~/lib/const';
-import { seoPayload } from '~/lib/seo.server';
-import { parseAsCurrency } from '~/lib/utils';
-import { WeaverseContent } from '~/weaverse';
+import type {SortParam} from '~/components/SortFilter';
+import {FILTER_URL_PREFIX} from '~/components/SortFilter';
+import {routeHeaders} from '~/data/cache';
+import {COLLECTION_QUERY} from '~/data/queries';
+import {PAGINATION_SIZE} from '~/lib/const';
+import {seoPayload} from '~/lib/seo.server';
+import {parseAsCurrency} from '~/lib/utils';
+import {WeaverseContent} from '~/weaverse';
 
 export const headers = routeHeaders;
+
+function parseProductFilters(searchParams: URLSearchParams): ProductFilter[] {
+  const filters: ProductFilter[] = [];
+  const filterObjects: {[key: string]: any} = {};
+
+  for (const [key, value] of searchParams) {
+    if (key.startsWith(FILTER_URL_PREFIX)) {
+      const path = key.slice(FILTER_URL_PREFIX.length).split('.');
+      if (path.length > 1) {
+        // Handling nested properties, e.g., 'variantOption.name'
+        const filterKey = path[0];
+        const propertyKey = path[1];
+
+        if (!filterObjects[filterKey]) {
+          filterObjects[filterKey] = {};
+        }
+
+        // Convert boolean and numeric values from strings
+        if (value === 'true' || value === 'false') {
+          filterObjects[filterKey][propertyKey] = value === 'true';
+        } else if (!isNaN(parseFloat(value))) {
+          filterObjects[filterKey][propertyKey] = parseFloat(value);
+        } else {
+          filterObjects[filterKey][propertyKey] = decodeURIComponent(value);
+        }
+      } else {
+        // Direct properties, not nested
+        const decodedValue = decodeURIComponent(value);
+        if (decodedValue === 'true' || decodedValue === 'false') {
+          filters.push({[path[0]]: decodedValue === 'true'});
+        } else if (!isNaN(parseFloat(decodedValue))) {
+          filters.push({[path[0]]: parseFloat(decodedValue)});
+        } else {
+          filters.push({[path[0]]: decodedValue});
+        }
+      }
+    }
+  }
+
+  // Convert constructed objects into separate filter entries
+  for (const key of Object.keys(filterObjects)) {
+    filters.push({[key]: filterObjects[key]});
+  }
+
+  return filters;
+}
 
 export async function loader({params, request, context}: LoaderFunctionArgs) {
   const paginationVariables = getPaginationVariables(request, {
@@ -34,18 +80,7 @@ export async function loader({params, request, context}: LoaderFunctionArgs) {
   const {sortKey, reverse} = getSortValuesFromParam(
     searchParams.get('sort') as SortParam,
   );
-  const filters = [...searchParams.entries()].reduce(
-    (filters, [key, value]) => {
-      if (key.startsWith(FILTER_URL_PREFIX)) {
-        const filterKey = key.substring(FILTER_URL_PREFIX.length);
-        filters.push({
-          [filterKey]: JSON.parse(value),
-        });
-      }
-      return filters;
-    },
-    [] as ProductFilter[],
-  );
+  const filters = parseProductFilters(searchParams);
 
   const {collection, collections} = await context.storefront.query(
     COLLECTION_QUERY,

@@ -181,10 +181,26 @@ function getAppliedFilterLink(
   location: Location,
 ) {
   const paramsClone = new URLSearchParams(params);
+
+  // Assuming each filter key in 'filter.filter' is structured like 'variantOption.name' or 'available'
   Object.entries(filter.filter).forEach(([key, value]) => {
-    const fullKey = FILTER_URL_PREFIX + key;
-    paramsClone.delete(fullKey, JSON.stringify(value));
+    // Nested properties need special handling to form the correct key
+    if (typeof value === 'object' && value !== null) {
+      Object.entries(value).forEach(([subKey, subValue]) => {
+        const fullKey = `${FILTER_URL_PREFIX}${key}.${subKey}`;
+        // Check if the value matches before deleting to avoid deleting other variant options
+        if (paramsClone.get(fullKey) === subValue.toString()) {
+          paramsClone.delete(fullKey);
+        }
+      });
+    } else {
+      const fullKey = `${FILTER_URL_PREFIX}${key}`;
+      if (paramsClone.get(fullKey) === value?.toString()) {
+        paramsClone.delete(fullKey);
+      }
+    }
   });
+
   return `${location.pathname}?${paramsClone.toString()}`;
 }
 
@@ -282,25 +298,45 @@ function PriceRangeFilter({max, min}: {max?: number; min?: number}) {
     </div>
   );
 }
-
+/**
+ * Converts a product filter object or JSON string representing the filters into URLSearchParams.
+ * @param rawInput The input filter data as a JSON string or ProductFilter object.
+ * @param params The URLSearchParams instance to modify.
+ * @returns The modified URLSearchParams instance with the filter parameters set.
+ */
 function filterInputToParams(
   rawInput: string | ProductFilter,
   params: URLSearchParams,
-) {
-  const input =
-    typeof rawInput === 'string'
-      ? (JSON.parse(rawInput) as ProductFilter)
-      : rawInput;
+): URLSearchParams {
+  const input = (
+    typeof rawInput === 'string' ? JSON.parse(rawInput) : rawInput
+  ) as ProductFilter;
 
   Object.entries(input).forEach(([key, value]) => {
-    if (params.has(`${FILTER_URL_PREFIX}${key}`, JSON.stringify(value))) {
-      return;
-    }
-    if (key === 'price') {
-      // For price, we want to overwrite
-      params.set(`${FILTER_URL_PREFIX}${key}`, JSON.stringify(value));
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      !(value instanceof Date)
+    ) {
+      Object.entries(value).forEach(([subKey, subValue]) => {
+        const paramKey = `${FILTER_URL_PREFIX}${key}.${subKey}`;
+        // Properly encode strings, pass other types directly
+        if (typeof subValue === 'string') {
+          params.set(paramKey, encodeURIComponent(subValue));
+        } else if (
+          typeof subValue === 'boolean' ||
+          typeof subValue === 'number'
+        ) {
+          params.set(paramKey, subValue.toString());
+        }
+      });
     } else {
-      params.append(`${FILTER_URL_PREFIX}${key}`, JSON.stringify(value));
+      const paramKey = `${FILTER_URL_PREFIX}${key}`;
+      if (typeof value === 'string') {
+        params.set(paramKey, encodeURIComponent(value));
+      } else if (typeof value === 'boolean' || typeof value === 'number') {
+        params.set(paramKey, value.toString());
+      }
     }
   });
 
