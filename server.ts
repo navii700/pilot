@@ -1,6 +1,9 @@
-// @ts-ignore
 // Virtual entry point for the app
-import * as remixBuild from 'virtual:remix/server-build';
+import * as remixBuild from '@remix-run/dev/server-build';
+import {
+  createRequestHandler,
+  getStorefrontHeaders,
+} from '@shopify/remix-oxygen';
 import {
   cartGetIdDefault,
   cartSetIdDefault,
@@ -9,16 +12,10 @@ import {
   storefrontRedirect,
   createCustomerAccountClient,
 } from '@shopify/hydrogen';
-import {
-  createRequestHandler,
-  getStorefrontHeaders,
-  type AppLoadContext,
-} from '@shopify/remix-oxygen';
 
 import {AppSession} from '~/lib/session';
-import {CART_QUERY_FRAGMENT} from '~/lib/fragments';
-import {createWeaverseClient} from '~/weaverse/create-weaverse.server';
 import {getLocaleFromRequest} from '~/lib/utils';
+import {createWeaverseClient} from '~/weaverse/create-weaverse.server';
 
 /**
  * Export a fetch handler in module format.
@@ -68,16 +65,11 @@ export default {
         customerAccountUrl: env.PUBLIC_CUSTOMER_ACCOUNT_API_URL,
       });
 
-      /*
-       * Create a cart handler that will be used to
-       * create and update the cart in the session.
-       */
       const cart = createCartHandler({
         storefront,
         customerAccount,
         getCartId: cartGetIdDefault(request.headers),
         setCartId: cartSetIdDefault(),
-        cartQueryFragment: CART_QUERY_FRAGMENT,
       });
 
       /**
@@ -87,13 +79,13 @@ export default {
       const handleRequest = createRequestHandler({
         build: remixBuild,
         mode: process.env.NODE_ENV,
-        getLoadContext: (): AppLoadContext => ({
+        getLoadContext: () => ({
           session,
+          waitUntil,
           storefront,
           customerAccount,
           cart,
           env,
-          waitUntil,
           weaverse: createWeaverseClient({
             storefront,
             request,
