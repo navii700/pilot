@@ -3,9 +3,10 @@ import {
   defer,
   type LinksFunction,
   type LoaderFunctionArgs,
+  MetaArgs,
   type SerializeFrom,
 } from '@shopify/remix-oxygen';
-import type {MetaFunction, ShouldRevalidateFunction} from '@remix-run/react';
+import type {ShouldRevalidateFunction} from '@remix-run/react';
 import {
   isRouteErrorResponse,
   Links,
@@ -18,7 +19,13 @@ import {
   useRouteError,
 } from '@remix-run/react';
 import type {SeoConfig} from '@shopify/hydrogen';
-import {getSeoMeta, ShopifySalesChannel, useNonce} from '@shopify/hydrogen';
+import {
+  getSeoMeta,
+  getShopAnalytics,
+  UNSTABLE_Analytics as Analytics,
+  useNonce,
+} from '@shopify/hydrogen';
+import {CustomAnalytics} from '~/components/CustomAnalytics';
 import invariant from 'tiny-invariant';
 import {withWeaverse} from '@weaverse/hydrogen';
 import roboto400 from '@fontsource/roboto/400.css?url';
@@ -32,7 +39,6 @@ import {GenericError} from './components/GenericError';
 import {NotFound} from './components/NotFound';
 import styles from './styles/app.css?url';
 import {DEFAULT_LOCALE, parseMenu} from './lib/utils';
-import {useAnalytics} from './hooks/useAnalytics';
 import {GlobalStyle} from './weaverse/style';
 
 // This is important to avoid re-fetching root queries on sub-navigations
@@ -86,26 +92,29 @@ export const useRootLoaderData = () => {
 };
 
 export async function loader({request, context}: LoaderFunctionArgs) {
-  const {storefront, customerAccount, cart} = context;
+  const {storefront, cart, env} = context;
   const layout = await getLayoutData(context);
-
-  const isLoggedInPromise = customerAccount.isLoggedIn();
-  const cartPromise = cart.get();
+  const isLoggedInPromise = context.customerAccount.isLoggedIn();
 
   const seo = seoPayload.root({shop: layout.shop, url: request.url});
-
+  const googleGtmID = context.env.PUBLIC_GOOGLE_GTM_ID;
   return defer(
     {
+      shop: getShopAnalytics({
+        storefront: context.storefront,
+        publicStorefrontId: env.PUBLIC_STOREFRONT_ID,
+      }),
+      consent: {
+        checkoutDomain: env.PUBLIC_CHECKOUT_DOMAIN,
+        storefrontAccessToken: env.PUBLIC_STOREFRONT_API_TOKEN,
+      },
       isLoggedIn: isLoggedInPromise,
       layout,
       selectedLocale: storefront.i18n,
-      cart: cartPromise,
-      analytics: {
-        shopifySalesChannel: ShopifySalesChannel.hydrogen,
-        shopId: layout.shop.id,
-      },
+      cart: cart.get(),
       seo,
       weaverseTheme: await context.weaverse.loadThemeSettings(),
+      googleGtmID,
     },
     {
       headers: {
@@ -115,7 +124,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   );
 }
 
-export const meta: MetaFunction<typeof loader> = ({data}) => {
+export const meta = ({data}: MetaArgs<typeof loader>) => {
   return getSeoMeta(data!.seo as SeoConfig);
 };
 
@@ -123,9 +132,6 @@ function App() {
   const nonce = useNonce();
   const data = useLoaderData<typeof loader>();
   const locale = data.selectedLocale ?? DEFAULT_LOCALE;
-  const hasUserConsent = true;
-
-  useAnalytics(hasUserConsent);
 
   return (
     <html lang={locale.language}>
@@ -137,12 +143,19 @@ function App() {
         <GlobalStyle />
       </head>
       <body>
-        <Layout
-          key={`${locale.language}-${locale.country}`}
-          layout={data.layout}
+        <Analytics.Provider
+          cart={data.cart}
+          shop={data.shop}
+          consent={data.consent}
         >
-          <Outlet />
-        </Layout>
+          <Layout
+            key={`${locale.language}-${locale.country}`}
+            layout={data.layout}
+          >
+            <Outlet />
+          </Layout>
+          <CustomAnalytics />
+        </Analytics.Provider>
         <ScrollRestoration nonce={nonce} />
         <Scripts nonce={nonce} />
       </body>
@@ -152,7 +165,8 @@ function App() {
 
 export default withWeaverse(App);
 
-const ErrorBoundaryComponent = ({error}: {error: Error}) => {
+export function ErrorBoundary({error}: {error: Error}) {
+  const nonce = useNonce();
   const routeError = useRouteError();
   const rootData = useRootLoaderData();
   const locale = rootData?.selectedLocale ?? DEFAULT_LOCALE;
@@ -175,32 +189,31 @@ const ErrorBoundaryComponent = ({error}: {error: Error}) => {
         <Meta />
         <Links />
       </head>
-      <body className="font-sans">
-        {isRouteError ? (
-          <>
-            {routeError.status === 404 ? (
-              <NotFound type={pageType} />
-            ) : (
-              <GenericError
-                error={{message: `${routeError.status} ${routeError.data}`}}
-              />
-            )}
-          </>
-        ) : (
-          <GenericError
-            error={
-              error instanceof Error
-                ? error
-                : (routeError as Error) || undefined
-            }
-          />
-        )}
+      <body>
+        <Layout
+          layout={rootData?.layout}
+          key={`${locale.language}-${locale.country}`}
+        >
+          {isRouteError ? (
+            <>
+              {routeError.status === 404 ? (
+                <NotFound type={pageType} />
+              ) : (
+                <GenericError
+                  error={{message: `${routeError.status} ${routeError.data}`}}
+                />
+              )}
+            </>
+          ) : (
+            <GenericError error={error instanceof Error ? error : undefined} />
+          )}
+        </Layout>
+        {/*<ScrollRestoration nonce={nonce} />*/}
+        {/*<Scripts nonce={nonce} />*/}
       </body>
     </html>
   );
-};
-
-export const ErrorBoundary = ErrorBoundaryComponent;
+}
 
 const LAYOUT_QUERY = `#graphql
   query layout(

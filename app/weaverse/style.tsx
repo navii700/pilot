@@ -5,15 +5,16 @@ let hexToPercent = (hex: string) => {
   return Math.floor((num / 255) * 100);
 };
 
-function hexToRgbString(hexColor = ''): string {
+function hexToRgbString(hexColor: string = ''): string {
+  if (!hexColor) return '';
   hexColor = hexColor.replace('#', '');
   if (hexColor.length === 3) {
     hexColor = hexColor.replace(/(.)/g, '$1$1');
   }
-  let r = parseInt(hexColor.substring(0, 2), 16) || '';
-  let g = parseInt(hexColor.substring(2, 4), 16) || '';
-  let b = parseInt(hexColor.substring(4, 6), 16) || '';
-  let a = hexToPercent(hexColor.substring(6, 8)) || '';
+  let r = parseInt(hexColor.substring(0, 2), 16) || 0;
+  let g = parseInt(hexColor.substring(2, 4), 16) || 0;
+  let b = parseInt(hexColor.substring(4, 6), 16) || 0;
+  let a = hexToPercent(hexColor.substring(6, 8)) || 0;
   let val = `${r} ${g} ${b}`;
   return `${val}${a ? ` / ${a}%` : ''}`.trim();
 }
@@ -52,13 +53,10 @@ export function GlobalStyle() {
       buttonSecondaryColorHover,
       buttonSecondaryBorder,
       buttonSecondaryBorderHover,
-      buttonSubtleBg,
-      buttonSubtleBgHover,
-      buttonSubtleColor,
-      buttonSubtleColorHover,
-      buttonSubtleBorder,
-      buttonSubtleBorderHover,
+      buttonLinkColor,
+      buttonLinkColorHover,
     } = settings;
+
     colorBackground = hexToRgbString(colorBackground);
     colorInverseBackground = hexToRgbString(colorInverseBackground);
     colorText = hexToRgbString(colorText);
@@ -69,10 +67,12 @@ export function GlobalStyle() {
     colorInverseButtonText = hexToRgbString(colorInverseButtonText);
     colorSale = hexToRgbString(colorSale);
     colorBorder = hexToRgbString(colorBorder);
+
     return (
       <style
         id="global-theme-style"
         key="global-theme-style"
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{
           __html: `
             :root {
@@ -150,38 +150,34 @@ export function GlobalStyle() {
                 --height-nav: ${navHeightDesktop}rem;
               }
             }
-            .btn-primary{
+            .btn-primary {
               background-color: ${buttonPrimaryBg};
               color: ${buttonPrimaryColor};
-              border: 2px solid ${buttonPrimaryBorder};
+              border-color: ${buttonPrimaryBorder};
             }
-            .btn-primary:hover{
-              background-color: ${buttonPrimaryBgHover}!important;
-              color: ${buttonPrimaryColorHover}!important;
-              border: 2px solid ${buttonPrimaryBorderHover} !important;
-              transition: 0.3s background-color color border;
+            .btn-primary:hover {
+              background-color: ${buttonPrimaryBgHover};
+              color: ${buttonPrimaryColorHover};
+              border-color: ${buttonPrimaryBorderHover};
             }
-            .btn-secondary{
+            .btn-secondary {
               background-color: ${buttonSecondaryBg};
               color: ${buttonSecondaryColor};
-              border: 2px solid ${buttonSecondaryBorder};
+              border-color: ${buttonSecondaryBorder};
             }
-            .btn-secondary:hover{
-              background-color: ${buttonSecondaryBgHover}!important;
-              color: ${buttonSecondaryColorHover}!important;
-              border: 2px solid ${buttonSecondaryBorderHover} !important;
-              transition: 0.3s background-color color border;
+            .btn-secondary:hover {
+              background-color: ${buttonSecondaryBgHover};
+              color: ${buttonSecondaryColorHover};
+              border-color: ${buttonSecondaryBorderHover};
             }
-            .btn-subtle{
-              background-color: ${buttonSubtleBg};
-              color: ${buttonSubtleColor};
-              border: 2px solid ${buttonSubtleBorder};
+            .btn-link {
+              color: ${buttonLinkColor};
+              border-bottom-color: ${buttonLinkColor};
+              border-radius: 0;
             }
-            .btn-subtle:hover{
-              background-color: ${buttonSubtleBgHover}!important;
-              color: ${buttonSubtleColorHover}!important;
-              border: 2px solid ${buttonSubtleBorderHover} !important;
-              transition: 0.3s background-color color border;
+            .btn-link:hover {
+              color: ${buttonLinkColorHover};
+              border-bottom-color: ${buttonLinkColorHover};
             }
           `,
         }}
