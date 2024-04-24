@@ -13,7 +13,7 @@ import {
   createCustomerAccountClient,
 } from '@shopify/hydrogen';
 
-import {AppSession} from '~/lib/session.server';
+import {AppSession} from '~/lib/session';
 import {getLocaleFromRequest} from '~/lib/utils';
 import {createWeaverseClient} from '~/weaverse/create-weaverse.server';
 

@@ -4,6 +4,7 @@ import type {
   HydrogenComponentSchema,
 } from '@weaverse/hydrogen';
 import {forwardRef} from 'react';
+
 import type {PageDetailsQuery} from 'storefrontapi.generated';
 import {PageHeader} from '~/components';
 
@@ -28,6 +29,7 @@ let Page = forwardRef<HTMLElement, PageProps>((props, ref) => {
         >
           <PageHeader heading={page.title}>
             <div
+              suppressHydrationWarning
               dangerouslySetInnerHTML={{__html: page.body}}
               className="prose dark:prose-invert"
             />

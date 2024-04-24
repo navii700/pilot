@@ -4,6 +4,7 @@ import {
 } from '@weaverse/hydrogen';
 import {clsx} from 'clsx';
 import {forwardRef} from 'react';
+
 import type {Alignment} from '~/lib/type';
 
 type Size = 'base' | 'large';
@@ -64,14 +65,6 @@ let SubHeading = forwardRef<
     </Tag>
   );
 });
-
-SubHeading.defaultProps = {
-  as: 'p',
-  size: 'base',
-  weight: 'normal',
-  alignment: 'center',
-  content: 'Section subheading',
-};
 
 export default SubHeading;
 

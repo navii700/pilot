@@ -5,6 +5,7 @@ import {
 import {clsx} from 'clsx';
 import type {CSSProperties} from 'react';
 import {forwardRef} from 'react';
+
 import type {Alignment} from '~/lib/type';
 
 type Size = 'default' | 'lead' | 'heading' | 'display' | 'jumbo' | 'scale';
@@ -91,17 +92,6 @@ let Heading = forwardRef<HTMLHeadingElement, HeadingProps>((props, ref) => {
     </Tag>
   );
 });
-
-Heading.defaultProps = {
-  as: 'h2',
-  size: 'default',
-  weight: 'bold',
-  tracking: 'inherit',
-  alignment: 'center',
-  content: 'Section heading',
-  minSize: 16,
-  maxSize: 72,
-};
 
 export default Heading;
 
