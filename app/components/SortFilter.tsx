@@ -329,7 +329,7 @@ export default function SortMenu() {
   ];
   const [params] = useSearchParams();
   const location = useLocation();
-  const activeItem = items.find((item) => item.key === params.get('sort'));
+  const [activeItem, setActiveItem] = useState(items.find((item) => item.key === params.get('sort')));
 
   return (
     <Menu as="div" className="relative z-40">
@@ -349,6 +349,9 @@ export default function SortMenu() {
           <Menu.Item key={item.label}>
             {() => (
               <Link
+                onClick={() => {
+                  setActiveItem(item);
+                }}
                 className={`block text-sm pb-2 px-3 ${
                   activeItem?.key === item.key ? 'font-bold' : 'font-normal'
                 }`}
