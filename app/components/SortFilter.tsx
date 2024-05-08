@@ -82,12 +82,10 @@ export function FiltersDrawer({
   const filterMarkup = (filter: Filter, option: Filter['values'][0]) => {
     switch (filter.type) {
       case 'PRICE_RANGE':
-        const priceFilter = params.get(`${FILTER_URL_PREFIX}price`);
-        const price = priceFilter
-          ? (JSON.parse(priceFilter) as ProductFilter['price'])
-          : undefined;
-        const min = isNaN(Number(price?.min)) ? undefined : Number(price?.min);
-        const max = isNaN(Number(price?.max)) ? undefined : Number(price?.max);
+        let priceMin = params.get(`${FILTER_URL_PREFIX}price.min`);
+        let priceMax = params.get(`${FILTER_URL_PREFIX}price.max`);
+        let min = isNaN(Number(priceMin)) ? undefined : Number(priceMin);
+        let max = isNaN(Number(priceMax)) ? undefined : Number(priceMax);
 
         return <PriceRangeFilter min={min} max={max} />;
 
@@ -223,7 +221,8 @@ function PriceRangeFilter({max, min}: {max?: number; min?: number}) {
   useDebounce(
     () => {
       if (minPrice === undefined && maxPrice === undefined) {
-        params.delete(`${FILTER_URL_PREFIX}price`);
+        params.delete(`${FILTER_URL_PREFIX}price.min`);
+        params.delete(`${FILTER_URL_PREFIX}price.max`);
         navigate(`${location.pathname}?${params.toString()}`);
         return;
       }
@@ -292,17 +291,18 @@ function filterInputToParams(
       ? (JSON.parse(rawInput) as ProductFilter)
       : rawInput;
 
-  Object.entries(input).forEach(([key, value]) => {
-    if (params.has(`${FILTER_URL_PREFIX}${key}`, JSON.stringify(value))) {
-      return;
-    }
-    if (key === 'price') {
-      // For price, we want to overwrite
-      params.set(`${FILTER_URL_PREFIX}${key}`, JSON.stringify(value));
-    } else {
-      params.append(`${FILTER_URL_PREFIX}${key}`, JSON.stringify(value));
-    }
-  });
+  // Object.entries(input).forEach(([key, value]) => {
+  //   if (params.has(`${FILTER_URL_PREFIX}${key}`, JSON.stringify(value))) {
+  //     return;
+  //   }
+  //   if (key === 'price') {
+  //     // For price, we want to overwrite
+  //     params.set(`${FILTER_URL_PREFIX}${key}`, JSON.stringify(value));
+  //   } else {
+  //     params.append(`${FILTER_URL_PREFIX}${key}`, JSON.stringify(value));
+  //   }
+  // });
+  console.log('input', input, params.toString());
 
   return params;
 }
@@ -329,7 +329,9 @@ export default function SortMenu() {
   ];
   const [params] = useSearchParams();
   const location = useLocation();
-  const [activeItem, setActiveItem] = useState(items.find((item) => item.key === params.get('sort')));
+  const [activeItem, setActiveItem] = useState(
+    items.find((item) => item.key === params.get('sort')),
+  );
 
   return (
     <Menu as="div" className="relative z-40">

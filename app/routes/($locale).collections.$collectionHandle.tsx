@@ -5,14 +5,15 @@ import {
   UNSTABLE_Analytics as Analytics,
 } from '@shopify/hydrogen';
 import type {
+  PriceRangeFilter,
   ProductCollectionSortKeys,
   ProductFilter,
 } from '@shopify/hydrogen/storefront-api-types';
 import {json, type LoaderFunctionArgs, MetaArgs} from '@shopify/remix-oxygen';
 import invariant from 'tiny-invariant';
-import {useLoaderData} from '@remix-run/react';
+import {type Location, useLoaderData} from '@remix-run/react';
 
-import type {SortParam} from '~/components/SortFilter';
+import {AppliedFilter, SortParam} from '~/components/SortFilter';
 import {FILTER_URL_PREFIX} from '~/components/SortFilter';
 import {routeHeaders} from '~/data/cache';
 import {COLLECTION_QUERY} from '~/data/queries';
@@ -22,6 +23,80 @@ import {parseAsCurrency} from '~/lib/utils';
 import {WeaverseContent} from '~/weaverse';
 
 export const headers = routeHeaders;
+export let generateFiltersFromQuery = (
+  searchParams: URLSearchParams,
+): ProductFilter[] => {
+  return [...searchParams.entries()].reduce((filters, [key, value]) => {
+    if (key.startsWith(FILTER_URL_PREFIX)) {
+      const [, filterKey, suffix, suffix2] = key.split('.');
+
+      switch (filterKey) {
+        case 'available':
+          filters.push({
+            available: value === 'true' || value === '1',
+          });
+          break;
+        case 'price':
+          const existingPriceFilter = filters.find(
+            (filter) => 'price' in filter,
+          );
+          if (existingPriceFilter) {
+            // @ts-expect-error
+            existingPriceFilter.price[suffix] = parseFloat(value);
+          } else {
+            filters.push({
+              price: {
+                [suffix]: parseFloat(value),
+              },
+            });
+          }
+          break;
+        case 'v':
+          filters.push({
+            variantOption: {
+              name: suffix,
+              value,
+            },
+          });
+          break;
+        case 'p_m':
+          filters.push({
+            productMetafield: {
+              namespace: suffix,
+              key: suffix2,
+              value,
+            },
+          });
+          break;
+        case 'tag':
+          filters.push({
+            tag: value,
+          });
+          break;
+        case 'vendor':
+          filters.push({
+            productVendor: value,
+          });
+          break;
+        case 'type':
+          filters.push({
+            productType: value,
+          });
+          break;
+        case 'v_m':
+          filters.push({
+            variantMetafield: {
+              namespace: suffix,
+              key: suffix2,
+              value,
+            },
+          });
+          break;
+      }
+    }
+    return filters;
+  }, [] as ProductFilter[]);
+};
 
 export async function loader({params, request, context}: LoaderFunctionArgs) {
   const paginationVariables = getPaginationVariables(request, {
@@ -37,19 +112,22 @@ export async function loader({params, request, context}: LoaderFunctionArgs) {
   const {sortKey, reverse} = getSortValuesFromParam(
     searchParams.get('sort') as SortParam,
   );
-  const filters = [...searchParams.entries()].reduce(
-    (filters, [key, value]) => {
-      if (key.startsWith(FILTER_URL_PREFIX)) {
-        const filterKey = key.substring(FILTER_URL_PREFIX.length);
-        filters.push({
-          [filterKey]: JSON.parse(value),
-        });
-      }
-      return filters;
-    },
-    [] as ProductFilter[],
-  );
+  // const filters = [...searchParams.entries()].reduce(
+  //   (filters, [key, value]) => {
+  //     if (key.startsWith(FILTER_URL_PREFIX)) {
+  //       const filterKey = key.substring(FILTER_URL_PREFIX.length);
+  //       filters.push({
+  //         [filterKey]: JSON.parse(value),
+  //       });
+  //     }
+  //     return filters;
+  //   },
+  //   [] as ProductFilter[],
+  // );
+  let filters = generateFiltersFromQuery(searchParams);
 
+  console.log('filters', JSON.stringify(filters, null, 2));
+  // console.log('filters1', JSON.stringify(filters1, null, 2));
   const {collection, collections} = await context.storefront.query(
     COLLECTION_QUERY,
     {
