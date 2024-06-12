@@ -9,7 +9,8 @@
     "build": "shopify hydrogen build --codegen",
     "dev": "shopify hydrogen dev --codegen --port 3456",
     "dev:ca": "shopify hydrogen dev --codegen --port 3456 --customer-account-push__unstable",
-    "preview": "npm run build && shopify hydrogen preview",
+    "preview": "npm run build && npm run start",
+    "start": "shopify hydrogen preview",
     "lint": "eslint --no-error-on-unmatched-pattern --ext .js,.ts,.jsx,.tsx .",
     "typecheck": "tsc --noEmit",
     "codegen": "shopify hydrogen codegen",
@@ -49,7 +50,8 @@
     "schema-dts": "1.1.2",
     "tailwind-merge": "^2.3.0",
     "tiny-invariant": "1.3.3",
-    "typographic-base": "1.0.4"
+    "typographic-base": "1.0.4",
+    "vite-tsconfig-paths": "^4.3.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.44.1",
